@@ -12,12 +12,24 @@ android {
         versionCode 1
         versionName "1.0"
 
+
+
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
     }
 
+
     buildTypes {
+
+        debug {
+
+
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
         release {
+            manifestPlaceholders = ["OUR_APP_ID": "xyzuvw"]
+
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -26,6 +38,9 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+
+
 }
 
 dependencies {
@@ -70,6 +85,25 @@ dependencies {
     implementation 'com.facebook.android:audience-network-sdk:6.+'
 
     implementation 'com.android.support:multidex:1.0.3'
+
+    implementation ('com.intentsoftware.addapptr:AATKit:2.30.5') {
+        transitive = true
+        exclude group: 'com.intentsoftware.addapptr.subsdk', module:'AdColony'
+        exclude group: 'com.facebook.android', module:'audience-network-sdk'
+
+    }
+
+//    implementation ('com.intentsoftware.addapptr:AATKit:2.29.13') {
+//        transitive = true
+//        exclude group: 'com.intentsoftware.addapptr.subsdk', module:'AdColony'
+//        exclude group: 'com.facebook.android', module:'audience-network-sdk'
+//    }
+
+    implementation ('com.intentsoftware.addapptr:AATKit:2.30.3') {
+        transitive = true
+        exclude group: 'com.intentsoftware.addapptr.subsdk', module:'AdColony'
+        exclude group: 'com.facebook.android', module:'audience-network-sdk'
+    }
 
 
 

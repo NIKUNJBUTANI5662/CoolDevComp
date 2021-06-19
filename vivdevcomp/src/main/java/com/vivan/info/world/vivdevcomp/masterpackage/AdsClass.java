@@ -6,16 +6,22 @@ import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.graphics.drawable.ColorDrawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -42,6 +48,11 @@ import com.google.android.gms.ads.AdSize;
 import com.google.android.gms.ads.AdView;
 import com.google.android.gms.ads.LoadAdError;
 import com.google.android.gms.ads.MobileAds;
+import com.intentsoftware.addapptr.AATKit;
+import com.intentsoftware.addapptr.AATKitConfiguration;
+import com.intentsoftware.addapptr.BannerPlacementLayout;
+import com.intentsoftware.addapptr.PlacementSize;
+import com.intentsoftware.addapptr.ad.VASTAdData;
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.BaseJsonHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
@@ -49,6 +60,7 @@ import com.startapp.sdk.ads.banner.Banner;
 import com.startapp.sdk.adsbase.StartAppAd;
 import com.startapp.sdk.adsbase.StartAppSDK;
 import com.startapp.sdk.adsbase.VideoListener;
+
 import com.vivan.info.world.vivdevcomp.R;
 import com.vungle.warren.AdConfig;
 import com.vungle.warren.Banners;
@@ -66,9 +78,13 @@ import java.util.concurrent.Callable;
 import cz.msebera.android.httpclient.Header;
 
 import static com.adcolony.sdk.AdColony.requestInterstitial;
+import static com.intentsoftware.addapptr.AATKit.createPlacement;
+import static com.intentsoftware.addapptr.AATKit.enableTestMode;
+import static com.intentsoftware.addapptr.AATKit.hasAdForPlacement;
+import static com.intentsoftware.addapptr.AATKit.showPlacement;
 
 
-public class AdsClass extends AppCompatActivity {
+public class AdsClass extends AppCompatActivity  {
 
 
     public static Boolean fst = true;
@@ -128,7 +144,12 @@ public class AdsClass extends AppCompatActivity {
 
     public static boolean nodata = false;
 
-    public String AppKey = "";
+    public static String AppKey = "";
+
+    private int fullscreenPlacementId = -1;
+    private int bannerPlacementId = -1;
+
+    private MyAppClass showcaseApplication;
 //
 //    private String facebookInterstitialAdid="373097850233939_373098686900522";
 //    private String facebookBannerAdid="373097850233939_750608699149517";
@@ -138,9 +159,22 @@ public class AdsClass extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         gsonUtils = GsonUtils.getInstance();
+        showcaseApplication = ((MyAppClass) getApplication());
         if (isConnected(this)) {
 
             if (fst) {
+
+                ApplicationInfo ai = null;
+                try {
+                    ai = this.getPackageManager().getApplicationInfo( this.getPackageName(), PackageManager.GET_META_DATA );
+                    AppKey = String.valueOf(ai.metaData.get("my_app_id"));
+
+                    Toast.makeText(this, AppKey, Toast.LENGTH_SHORT).show();
+                } catch (PackageManager.NameNotFoundException e) {
+                    e.printStackTrace();
+                }
+
+
                 Webservice();
                 fst = false;
             }
@@ -176,7 +210,14 @@ public class AdsClass extends AppCompatActivity {
                         if (response.getDialogDetail().size() > 0) {
                             dialogList = new ArrayList<>();
                             dialogList.addAll(response.getDialogDetail());
-                            adsList.addAll(response.getAdsDetail());
+
+
+
+                            if(!currentadnetwork.equals("addapptr"))
+                            {
+                                adsList.addAll(response.getAdsDetail());
+                            }
+
                             for (int i = 0; i < adsList.size(); i++) {
                                 if (currentadnetwork.equals("google")) {
                                     if (adsList.get(i).getAdNetwork().equals("google") && (adsList.get(i).getAdsType().equals("inter"))) {
@@ -222,6 +263,22 @@ public class AdsClass extends AppCompatActivity {
                                         StartAppId = adsList.get(i).getNetworkAppId();
                                         // googleInterastialAdsId = adsList.get(i).getPlacementId();
                                     }
+                                    //  loadInterastialAds();
+                                }
+                                else if (currentadnetwork.equals("addapptr")) {
+
+
+
+//                                    if (adsList.get(i).getAdNetwork().equals("addapptr") && (adsList.get(i).getAdsType().equals("inter"))) {
+//
+//                                        AdColony_APP_ID = adsList.get(i).getNetworkAppId();
+//                                        Adcolony_ZONE_ID = adsList.get(i).getPlacementId();
+//                                        AD_UNIT_Zone_Ids[0] = Adcolony_ZONE_ID;
+//                                    } else if (adsList.get(i).getAdNetwork().equals("addapptr") && (adsList.get(i).getAdsType().equals("banner"))) {
+//                                        AdColony_APP_ID = adsList.get(i).getNetworkAppId();
+//                                        Adcolony_banner_Zone_ID = adsList.get(i).getPlacementId();
+//                                        AD_UNIT_Zone_Ids[1] = Adcolony_ZONE_ID;
+//                                    }
                                     //  loadInterastialAds();
                                 }
 
@@ -833,7 +890,11 @@ public class AdsClass extends AppCompatActivity {
             initStartApp();
         } else if (currentadnetwork.equals("adcolony")) {
             initAdcolony();
-        } else {
+        }
+        else if(currentadnetwork.equals("addapptr"))
+        {
+            Toast.makeText(this, "add app tr", Toast.LENGTH_SHORT).show();
+        } else{
             Toast.makeText(this, "No ads", Toast.LENGTH_SHORT).show();
         }
 
@@ -851,7 +912,11 @@ public class AdsClass extends AppCompatActivity {
             initStartApp();
         } else if (currentadnetwork.equals("adcolony")) {
             initAdcolony();
-        } else {
+        }
+        else if (currentadnetwork.equals("addapptr")) {
+            loadAddapptrInterstitial();
+        }
+        else {
             Toast.makeText(this, "No ads", Toast.LENGTH_SHORT).show();
         }
     }
@@ -869,7 +934,11 @@ public class AdsClass extends AppCompatActivity {
 
         } else if (currentadnetwork.equals("adcolony")) {
             showAdcolonyInterastial(callable);
-        } else {
+        }
+        else if (currentadnetwork.equals("addapptr")) {
+            showAddapptrInterstitial(callable);
+        }
+        else {
             try {
                 callable.call();
             } catch (Exception e) {
@@ -895,10 +964,226 @@ public class AdsClass extends AppCompatActivity {
         } else if (currentadnetwork.equals("adcolony")) {
             initAdcolony();
             showAdcolonyBanner();
-        } else {
+        }
+        else if (currentadnetwork.equals("addapptr")) {
+            showAddapptrBanner();
+        }
+        else {
             //   Toast.makeText(this, "No ads", Toast.LENGTH_SHORT).show();
         }
     }
 
 
+
+
+
+    //addapptr
+    public void showAddapptrBanner(){
+        AATKit.onActivityResume(this);
+        // RelativeLayout adContainer = (RelativeLayout) findViewById(R.id.layout_banner);
+        bannerPlacementId = createPlacement("Banner",
+                PlacementSize.Banner320x53);
+        addPlacementView(bannerPlacementId);
+        AATKit.startPlacementAutoReload(bannerPlacementId);
+    }
+
+    public void loadAddapptrInterstitial(){
+        AATKit.onActivityResume(this);
+
+        fullscreenPlacementId = AATKit.createPlacement("Fullscreen", PlacementSize.Fullscreen);
+        AATKit.startPlacementAutoReload(fullscreenPlacementId);
+        showcaseApplication.setListener(createOnAATKitEventListener(null));
+        resumeonce = 0;
+        AdsShown = false;
+
+    }
+
+    public  Callable clb=null;
+    public boolean AdsShown = false;
+    public void showAddapptrInterstitial(Callable<Void> callable){
+
+        //  aatKitEventListner = createOnAATKitEventListener(callable);
+
+
+
+
+        // AATKit.onActivityResume(this);
+        //   AATKitConfiguration configuration = new AATKitConfiguration(getApplication());
+//       // configuration.setDelegate();
+//        DelegateClass delegate = new DelegateClass();
+//        AATKit.Delegate d = delegate.p;
+//        configuration.setDelegate(d);
+////
+//        fullscreenPlacementId = AATKit.createPlacement("Fullscreen", PlacementSize.Fullscreen);
+//
+        //  AATKit.reconfigure(configuration);
+
+
+
+        if(!AdsShown)
+        {
+            if(hasAdForPlacement(fullscreenPlacementId))
+            {
+                clb = callable;
+                AATKit.showPlacement(getFullscreenPlacementId());
+                //  aatKitEventListner.onResumeAfterAd(fullscreenPlacementId);
+                AdsShown =true;
+
+            }
+        }
+        else
+        {
+            try {
+                callable.call();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+
+
+
+
+    }
+
+    public AATKitEventListner createOnAATKitEventListener(Callable<Void> callable) {
+        return new AATKitEventListner() {
+            @Override
+            public void onNoAd(int placementId) {
+                if(placementId == fullscreenPlacementId)
+                {
+                    try {
+
+                        //clb.call();
+                        clb.call();
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            @Override
+            public void onHaveAd(int placementId) {
+
+
+                // toast("havead");
+//                showPlacement(fullscreenPlacementId);
+//                if(placementId == fullscreenPlacementId)
+
+
+//                {
+//                    try {
+//
+//                        callable.call();
+//
+//                    } catch (Exception e) {
+//                        e.printStackTrace();
+//                    }
+//                }
+
+            }
+
+            @Override
+            public void onUserEarnedIncentive(int placementId) {
+//                showPlacement(fullscreenPlacementId);
+//                try {
+//                    callable.call();
+//                } catch (Exception e) {
+//                    e.printStackTrace();
+
+//                }
+                // toast("onUserEarnedIncentive");
+            }
+
+            @Override
+            public void onResumeAfterAd(int placementId) {
+//                Toast.makeText(showcaseApplication, "1", Toast.LENGTH_SHORT).show();
+                if(placementId == fullscreenPlacementId)
+                {
+                    Toast.makeText(showcaseApplication, "2", Toast.LENGTH_SHORT).show();
+                    try {
+
+                        clb.call();
+                        // callable.call();
+                        Toast.makeText(showcaseApplication, "3", Toast.LENGTH_SHORT).show();
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        Toast.makeText(showcaseApplication, "4", Toast.LENGTH_SHORT).show();
+
+                    }
+                }
+
+                // toast("onResumeAfterAd");
+            }
+
+            @Override
+            public void onHaveVASTAd(int placementId, VASTAdData data) {
+//                showPlacement(fullscreenPlacementId);
+//                try {
+//                    callable.call();
+//                } catch (Exception e) {
+//                    e.printStackTrace();
+//                }
+            }
+
+
+
+
+        };
+    }
+
+    private void addPlacementView(int placementId) {
+        RelativeLayout mainLayout = (RelativeLayout) findViewById(R.id.layout_banner);
+
+        mainLayout.removeAllViews();
+        View placementView = AATKit.getPlacementView(placementId);
+        if (placementView.getParent() != null){
+            ((ViewGroup)placementView.getParent()).removeView(placementView);
+        }
+        FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
+        layoutParams.gravity = Gravity.CENTER_HORIZONTAL | Gravity.BOTTOM;
+        mainLayout.setVisibility(View.VISIBLE);
+
+        mainLayout.addView(placementView, layoutParams);
+    }
+
+    private void removePlacementView(int placementId) {
+        View placementView = AATKit.getPlacementView(placementId);
+
+        if (placementView.getParent() != null) {
+            ViewGroup parent = (ViewGroup) placementView.getParent();
+            parent.removeView(placementView);
+        }
+    }
+
+    public int getBannerPlacementId() {
+        return bannerPlacementId;
+    }
+
+    public int getFullscreenPlacementId() {
+        return fullscreenPlacementId;
+    }
+
+    public int resumeonce = 0;
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (currentadnetwork.equals("addapptr")) {
+            if(AdsShown) {
+                if(resumeonce == 0) {
+
+                    resumeonce = 1;
+                    try {
+                        clb.call();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
 }
